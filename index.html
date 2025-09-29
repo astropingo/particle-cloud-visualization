@@ -20,7 +20,7 @@
     }
     html, body { height: 100%; margin: 0; }
     body {
-      background: linear-gradient(135deg, #f0f9ff 0%, #fef3c7 50%, #fee2e2 100%);
+      background: #f2f2f2;
       color: var(--text);
       font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
     }
@@ -151,7 +151,8 @@
 
     const spacing = 4.2;
     const groups = COUNTS.map((d, i) => {
-      const radius = 0.8 + Math.log10(d.count + 1) * 0.8;
+      // Increased scale multiplier for better visibility when resized
+      const radius = 1.2 + Math.log10(d.count + 1) * 1.2;
       const center = new THREE.Vector3(i * spacing - spacing * 1.5, 0, 0);
       const colorToUse = d.lightColor; // Start with light colors
       const obj = makePointsBlob(d.count, radius, colorToUse, center);
@@ -266,7 +267,7 @@
         root.style.setProperty('--panel', 'rgba(255,255,255,0.9)');
         root.style.setProperty('--border', 'rgba(148,163,184,0.3)');
         root.style.setProperty('--shadow', '0 4px 20px rgba(0,0,0,0.08)');
-        document.body.style.background = 'linear-gradient(135deg, #f0f9ff 0%, #fef3c7 50%, #fee2e2 100%)';
+        document.body.style.background = '#f2f2f2';
       }
       
       // Update particle colors
@@ -416,7 +417,7 @@
 
       const mat = new THREE.PointsMaterial({
         color: new THREE.Color(color),
-        size: 0.12,
+        size: 0.16,
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.75,

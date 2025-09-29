@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Project Scope Growth — Particle Cloud</title>
+  <style>
+    :root {
+      --bg0: #f8fafc;
+      --bg1: #f1f5f9;
+      --text: #1e293b;
+      --muted: #64748b;
+      --panel: rgba(255,255,255,0.9);
+      --border: rgba(148,163,184,0.3);
+      --shadow: 0 4px 20px rgba(0,0,0,0.08);
+      --blue:  #3b82f6;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --rose:  #ef4444;
+    }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: linear-gradient(135deg, #f0f9ff 0%, #fef3c7 50%, #fee2e2 100%);
+      color: var(--text);
+      font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+    #wrap { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
+    canvas { display: block; }
+    #overlay { position: absolute; inset: 0; pointer-events: none; display: grid; grid-template-rows: auto 1fr auto; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 20px; flex-wrap: wrap; }
+    .title { font-weight: 700; letter-spacing: -0.02em; font-size: 18px; color: var(--text); }
+    .cluster-legend { pointer-events: auto; display: none; gap: 14px; padding: 10px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow); }
+    @media (min-width: 640px){ .cluster-legend { display: flex; } }
+    .legend-item { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 500; }
+    .dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
+    .button { pointer-events: auto; background: var(--panel); color: var(--text); border: 1px solid var(--border); padding: 9px 14px; border-radius: 10px; cursor: pointer; transition: all .2s ease; font-weight: 500; box-shadow: var(--shadow); }
+    .button:hover { background: #ffffff; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,0,0,0.12); }
+    .button.active { background: var(--blue); color: white; border-color: var(--blue); }
+    .controls { display: flex; gap: 8px; pointer-events: auto; }
+    .footer { padding: 14px 20px; color: var(--muted); font-size: 12px; }
+    #labels { position: absolute; inset: 0; pointer-events: none; }
+    .label { position: absolute; transform: translate(-50%, -50%); padding: 6px 12px; font-weight: 600; font-size: 13px; border-radius: 10px; color: var(--text); background: var(--panel); box-shadow: var(--shadow); border: 1px solid var(--border); backdrop-filter: blur(8px); }
+    .label-line { position: absolute; background: rgba(100, 116, 139, 0.25); transform-origin: top center; pointer-events: none; }
+    
+    /* Color picker menu */
+    .color-menu { 
+      position: absolute; 
+      top: 70px; 
+      right: 20px; 
+      background: var(--panel); 
+      border: 1px solid var(--border); 
+      border-radius: 12px; 
+      padding: 16px; 
+      box-shadow: var(--shadow); 
+      pointer-events: auto;
+      backdrop-filter: blur(12px);
+      display: none;
+      min-width: 200px;
+    }
+    .color-menu.visible { display: block; }
+    .color-menu-title { font-weight: 600; margin-bottom: 12px; color: var(--text); }
+    .color-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .color-item label { flex: 1; color: var(--text); font-size: 13px; }
+    .color-item input[type="color"] { 
+      width: 40px; 
+      height: 30px; 
+      border: 1px solid var(--border); 
+      border-radius: 6px; 
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="scene"></canvas>
+    <div id="overlay">
+      <div class="topbar">
+        <div class="title">Project Scope Growth</div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
+          <div class="cluster-legend">
+            <div class="legend-item"><span class="dot" style="background: var(--rose)"></span>4200</div>
+            <div class="legend-item"><span class="dot" style="background: var(--amber)"></span>200</div>
+            <div class="legend-item"><span class="dot" style="background: var(--green)"></span>30</div>
+            <div class="legend-item"><span class="dot" style="background: var(--blue)"></span>3</div>
+          </div>
+          <div class="controls">
+            <button id="toggleLabels" class="button active">Labels</button>
+            <button id="toggleRotation" class="button active">Rotation</button>
+            <button id="toggleDarkMode" class="button">Dark Mode</button>
+            <button id="toggleColorMenu" class="button">Colors</button>
+            <button id="regenerate" class="button">Regenerate</button>
+            <button id="reset" class="button">Reset View</button>
+            <button id="dl" class="button">Export PNG</button>
+          </div>
+        </div>
+      </div>
+      <div id="labels"></div>
+      <div class="color-menu" id="colorMenu">
+        <div class="color-menu-title">Cluster Colors</div>
+        <div class="color-item">
+          <label>4200</label>
+          <input type="color" id="color0" value="#dc2626">
+        </div>
+        <div class="color-item">
+          <label>200</label>
+          <input type="color" id="color1" value="#ea580c">
+        </div>
+        <div class="color-item">
+          <label>30</label>
+          <input type="color" id="color2" value="#059669">
+        </div>
+        <div class="color-item">
+          <label>3</label>
+          <input type="color" id="color3" value="#2563eb">
+        </div>
+      </div>
+      <div class="footer">Particle clusters sized by count; color encodes each stage: 4200 → 200 → 30 → 3.</div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    const COUNTS = [
+      { label: '4200', count: 4200, color: '#ef4444', lightColor: '#dc2626' },
+      { label: '200',  count: 200,  color: '#f59e0b', lightColor: '#ea580c' },
+      { label: '30',   count: 30,   color: '#10b981', lightColor: '#059669' },
+      { label: '3',    count: 3,    color: '#3b82f6', lightColor: '#2563eb' },
+    ];
+
+    const canvas = document.getElementById('scene');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000, 0);
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(0, 2.2, 12);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 1.2);
+    scene.add(ambient);
+
+    const groupRoot = new THREE.Group();
+    scene.add(groupRoot);
+
+    // State
+    let labelsVisible = true;
+    let rotationEnabled = true;
+    let darkMode = false;
+
+    const spacing = 4.2;
+    const groups = COUNTS.map((d, i) => {
+      const radius = 0.8 + Math.log10(d.count + 1) * 0.8;
+      const center = new THREE.Vector3(i * spacing - spacing * 1.5, 0, 0);
+      const colorToUse = d.lightColor; // Start with light colors
+      const obj = makePointsBlob(d.count, radius, colorToUse, center);
+      obj.rotation.y = 0.25 * i;
+      groupRoot.add(obj);
+      return { label: d.label, color: d.color, lightColor: d.lightColor, radius, center, obj, speed: 0.06 + i * 0.012 };
+    });
+
+    // Labels with connecting lines
+    const labelsLayer = document.getElementById('labels');
+    const labelData = groups.map(g => {
+      const line = document.createElement('div');
+      line.className = 'label-line';
+      labelsLayer.appendChild(line);
+      
+      const el = document.createElement('div');
+      el.className = 'label';
+      el.textContent = g.label;
+      labelsLayer.appendChild(el);
+      
+      return { el, line };
+    });
+
+    // Mouse controls
+    let isDragging = false;
+    let isPanning = false;
+    let prevMouse = { x: 0, y: 0 };
+    let rotation = { x: 0, y: 0 };
+    let targetRotation = { x: 0, y: 0 };
+    let cameraOffset = { x: 0, y: 0 };
+    let targetCameraOffset = { x: 0, y: 0 };
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 0) { // Left click - rotate
+        isDragging = true;
+        prevMouse = { x: e.clientX, y: e.clientY };
+      } else if (e.button === 2) { // Right click - pan
+        e.preventDefault();
+        isPanning = true;
+        prevMouse = { x: e.clientX, y: e.clientY };
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault(); // Prevent context menu on right click
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (isDragging) {
+        const dx = e.clientX - prevMouse.x;
+        const dy = e.clientY - prevMouse.y;
+        targetRotation.y += dx * 0.005;
+        targetRotation.x += dy * 0.005;
+        targetRotation.x = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, targetRotation.x));
+        prevMouse = { x: e.clientX, y: e.clientY };
+      } else if (isPanning) {
+        const dx = e.clientX - prevMouse.x;
+        const dy = e.clientY - prevMouse.y;
+        targetCameraOffset.x -= dx * 0.01;
+        targetCameraOffset.y += dy * 0.01;
+        prevMouse = { x: e.clientX, y: e.clientY };
+      }
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+      if (e.button === 0) isDragging = false;
+      if (e.button === 2) isPanning = false;
+    });
+    
+    canvas.addEventListener('mouseleave', () => {
+      isDragging = false;
+      isPanning = false;
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY * 0.01;
+      camera.position.z = Math.max(6, Math.min(22, camera.position.z + delta));
+    });
+
+    // Toggle buttons
+    document.getElementById('toggleLabels').addEventListener('click', function() {
+      labelsVisible = !labelsVisible;
+      this.classList.toggle('active');
+      labelsLayer.style.display = labelsVisible ? 'block' : 'none';
+    });
+
+    document.getElementById('toggleRotation').addEventListener('click', function() {
+      rotationEnabled = !rotationEnabled;
+      this.classList.toggle('active');
+    });
+
+    document.getElementById('toggleDarkMode').addEventListener('click', function() {
+      darkMode = !darkMode;
+      this.classList.toggle('active');
+      
+      const root = document.documentElement;
+      if (darkMode) {
+        root.style.setProperty('--bg0', '#0b1120');
+        root.style.setProperty('--bg1', '#0a0f1c');
+        root.style.setProperty('--text', '#e5e7eb');
+        root.style.setProperty('--muted', '#a7b0bf');
+        root.style.setProperty('--panel', 'rgba(255,255,255,0.05)');
+        root.style.setProperty('--border', 'rgba(255,255,255,0.12)');
+        root.style.setProperty('--shadow', '0 10px 40px rgba(0,0,0,0.35)');
+        document.body.style.background = 'radial-gradient(1200px 900px at 20% 0%, #101827 0%, #020617 70%), linear-gradient(180deg, #0b1120 0%, #000 100%)';
+      } else {
+        root.style.setProperty('--bg0', '#f8fafc');
+        root.style.setProperty('--bg1', '#f1f5f9');
+        root.style.setProperty('--text', '#1e293b');
+        root.style.setProperty('--muted', '#64748b');
+        root.style.setProperty('--panel', 'rgba(255,255,255,0.9)');
+        root.style.setProperty('--border', 'rgba(148,163,184,0.3)');
+        root.style.setProperty('--shadow', '0 4px 20px rgba(0,0,0,0.08)');
+        document.body.style.background = 'linear-gradient(135deg, #f0f9ff 0%, #fef3c7 50%, #fee2e2 100%)';
+      }
+      
+      // Update particle colors
+      groups.forEach((g, i) => {
+        const colorToUse = darkMode ? g.color : g.lightColor;
+        g.obj.material.color.set(colorToUse);
+      });
+    });
+
+    document.getElementById('reset').addEventListener('click', function() {
+      // Reset camera position
+      camera.position.set(0, 2.2, 12);
+      cameraOffset = { x: 0, y: 0 };
+      targetCameraOffset = { x: 0, y: 0 };
+      
+      // Reset rotation
+      rotation = { x: 0, y: 0 };
+      targetRotation = { x: 0, y: 0 };
+      groupRoot.rotation.x = 0;
+      groupRoot.rotation.y = 0;
+      
+      // Reset cluster rotations
+      groups.forEach((g, i) => {
+        g.obj.rotation.y = 0.25 * i;
+      });
+    });
+
+    // Color menu toggle
+    document.getElementById('toggleColorMenu').addEventListener('click', function() {
+      const menu = document.getElementById('colorMenu');
+      menu.classList.toggle('visible');
+      this.classList.toggle('active');
+    });
+
+    // Color pickers
+    for (let i = 0; i < 4; i++) {
+      document.getElementById(`color${i}`).addEventListener('input', function(e) {
+        const newColor = e.target.value;
+        groups[i].obj.material.color.set(newColor);
+        groups[i].lightColor = newColor;
+        groups[i].color = newColor;
+      });
+    }
+
+    // Regenerate particles
+    document.getElementById('regenerate').addEventListener('click', function() {
+      groups.forEach(g => {
+        const positions = g.obj.geometry.attributes.position.array;
+        const particleCount = positions.length / 3;
+        
+        // Generate new random positions for each particle
+        for (let i = 0; i < particleCount; i++) {
+          const [x, y, z] = randInUnitSphere();
+          positions[i * 3 + 0] = x * g.radius + g.center.x;
+          positions[i * 3 + 1] = y * g.radius + g.center.y;
+          positions[i * 3 + 2] = z * g.radius + g.center.z;
+        }
+        
+        // Tell Three.js the geometry has been updated
+        g.obj.geometry.attributes.position.needsUpdate = true;
+      });
+    });
+
+    let lastTime = 0;
+    function animate(time) {
+      const dt = Math.min(0.05, (time - lastTime) / 1000);
+      lastTime = time;
+
+      rotation.x += (targetRotation.x - rotation.x) * 0.1;
+      rotation.y += (targetRotation.y - rotation.y) * 0.1;
+      groupRoot.rotation.x = rotation.x;
+      groupRoot.rotation.y = rotation.y;
+
+      cameraOffset.x += (targetCameraOffset.x - cameraOffset.x) * 0.1;
+      cameraOffset.y += (targetCameraOffset.y - cameraOffset.y) * 0.1;
+      camera.position.x = cameraOffset.x;
+      camera.position.y = 2.2 + cameraOffset.y;
+
+      groups.forEach((g, i) => {
+        if (rotationEnabled) {
+          g.obj.rotation.y += g.speed * dt;
+        }
+        
+        const centerWorld = g.center.clone();
+        centerWorld.applyMatrix4(groupRoot.matrixWorld);
+        const centerScreen = centerWorld.project(camera);
+        const cx = (centerScreen.x * 0.5 + 0.5) * window.innerWidth;
+        const cy = (-centerScreen.y * 0.5 + 0.5) * window.innerHeight;
+        
+        const { el, line } = labelData[i];
+        
+        if (labelsVisible && centerScreen.z < 1 && centerScreen.z > -1) {
+          el.style.display = 'block';
+          line.style.display = 'block';
+          
+          el.style.left = cx + 'px';
+          el.style.top = cy + 'px';
+          
+          line.style.left = cx + 'px';
+          line.style.top = cy + 'px';
+          line.style.width = '1px';
+          line.style.height = '0px';
+          
+          const opacity = Math.max(0.4, Math.min(1, 1 - Math.abs(centerScreen.z) * 0.8));
+          el.style.opacity = opacity;
+          line.style.opacity = opacity * 0.5;
+        } else {
+          el.style.display = 'none';
+          line.style.display = 'none';
+        }
+      });
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    document.getElementById('dl').addEventListener('click', () => {
+      const url = renderer.domElement.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'scope-particle-cloud.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+
+    function makePointsBlob(count, radius, color, center) {
+      const geom = new THREE.BufferGeometry();
+      const positions = new Float32Array(count * 3);
+      
+      for (let i = 0; i < count; i++) {
+        const [x, y, z] = randInUnitSphere();
+        positions[i * 3 + 0] = x * radius + center.x;
+        positions[i * 3 + 1] = y * radius + center.y;
+        positions[i * 3 + 2] = z * radius + center.z;
+      }
+      
+      geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+      const mat = new THREE.PointsMaterial({
+        color: new THREE.Color(color),
+        size: 0.12,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.75,
+        depthWrite: false,
+      });
+
+      return new THREE.Points(geom, mat);
+    }
+
+    function randInUnitSphere() {
+      let x, y, z, s;
+      do {
+        x = Math.random() * 2 - 1;
+        y = Math.random() * 2 - 1;
+        z = Math.random() * 2 - 1;
+        s = x * x + y * y + z * z;
+      } while (s >= 1 || s === 0);
+      const scale = Math.cbrt(Math.random()) * 0.9;
+      return [x * scale, y * scale, z * scale];
+    }
+  </script>
+</body>
+</html>
